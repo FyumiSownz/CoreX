@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # Ten File: SonDang_Tweaks.ps1
 # Tac gia: SonDang
 # Chuc nang: Toi uu hoa toan dien, don rac, giam do tre va tat dich vu ngam
@@ -211,24 +211,53 @@ $Tasks = @(
         }
     },
     @{
+        Name = "Toi uu hoa O cung (SSD Tweaks By Fyumi)";
+        Action = {
+            Write-Log "Dang ap dung cac tinh chinh SSD tu Fyumi..." "INFO"
+            fsutil behavior query disabledeletenotify | Out-Null
+            fsutil behavior set DisableDeleteNotify 0 | Out-Null
+            fsutil behavior set disabledeletenotify refs 0 | Out-Null
+            fsutil behavior set mftzone 2 | Out-Null
+            fsutil behavior set disablelastaccess 1 | Out-Null
+            fsutil behavior set disable8dot3 1 | Out-Null
+            fsutil behavior set disablecompression 1 | Out-Null
+            fsutil behavior set disableencryption 1 | Out-Null
+            fsutil behavior set encryptpagingfile 0 | Out-Null
+            $script:ApplyCount += 9
+            Write-Log "Da thuc thi toan bo cac lenh fsutil cho SSD." "APPLY"
+        }
+    },
+    @{
         Name = "Toi uu hoa PowerPlan (Fyumi Power Plan) & CPU";
         Action = {
             Write-Log "Cai dat Power Plan..." "INFO"
             $PlanName = "Fyumi Power Plan"
             $PlanDescription = "Made by SonDang"
+            
             $ExistingPlan = powercfg /list | Where-Object { $_ -like "*$PlanName*" }
             $Guid = ""
 
             if ($ExistingPlan) {
-                $Guid = ($ExistingPlan -split " ")[3]
-                $script:SkipCount++
+                if ($ExistingPlan -match "([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})") {
+                    $Guid = $matches[1]
+                    $script:SkipCount++
+                }
             } else {
-                $Output = powercfg /duplicate 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
-                $Guid = ($Output -split " ")[4]
-                powercfg /changename $Guid $PlanName $PlanDescription
-                $script:ApplyCount++
+                $BasePlanList = powercfg /list
+                $BaseGuid = "381b4222-f694-41f0-9685-ff5bb260df2e"
+                if ($BasePlanList -match "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c") {
+                    $BaseGuid = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"
+                }
+                
+                $Output = powercfg /duplicatescheme $BaseGuid
+                if ($Output -match "([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})") {
+                    $Guid = $matches[1]
+                    powercfg /changename $Guid $PlanName $PlanDescription
+                    $script:ApplyCount++
+                }
             }
-            powercfg /setactive $Guid | Out-Null
+
+            if ($Guid) { powercfg /setactive $Guid | Out-Null }
 
             Write-Log "Cai dat AC/DC Powercfg..." "INFO"
             powercfg.exe -setdcvalueindex scheme_current sub_processor PROCTHROTTLEMAX 100
@@ -265,6 +294,8 @@ $Tasks = @(
             Write-Log "Tinh chinh he thong BCDedit..." "INFO"
             bcdedit.exe /set allowedinmemorysettings 0x0 | Out-Null
             bcdedit.exe /set isolatedcontext No | Out-Null
+            bcdedit.exe /set vsmlaunchtype Off | Out-Null
+            bcdedit.exe / tpmbootentropy ForceDisable | Out-Null 
             $script:ApplyCount++
 
             Set-SmartReg "HKLM:\SYSTEM\CurrentControlSet\Control\Power" "EventProcessorEnablingd" 0 "DWord"
@@ -426,9 +457,7 @@ $Tasks = @(
             Set-SmartReg "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\kernel" "DistributeTimers" 1 "DWord"
 
             Write-Log "Xac minh BCDedit System Timer..." "INFO"
-            bcdedit /set disabledynamictick yes | Out-Null
             bcdedit /set useplatformtick yes | Out-Null
-            bcdedit /deletevalue useplatformclock >$null 2>&1
             bcdedit /set tpmbootentropy ForceDisable | Out-Null
             bcdedit /set vsmlaunchtype Off | Out-Null
 
@@ -461,11 +490,8 @@ $Tasks = @(
             & netsh int tcp set global rsc=disabled | Out-Null
             $script:ApplyCount++
 
-            Set-SmartReg "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\csrss.exe\PerfOptions" "CpuPriorityClass" 4 "DWord"
             Set-SmartReg "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\csrss.exe\PerfOptions" "IoPriority" 4 "DWord"
             Set-SmartReg "HKLM:\SYSTEM\CurrentControlSet\Services\HidUsb\Parameters" "ThreadPriority" 31 "DWord"
-            Set-SmartReg "HKLM:\SYSTEM\CurrentControlSet\Services\mouclass\Parameters" "MouseDataQueueSize" 23 "DWord"
-            Set-SmartReg "HKLM:\SYSTEM\CurrentControlSet\Services\kbdclass\Parameters" "KeyboardDataQueueSize" 23 "DWord"
             Set-SmartReg "HKCU:\Control Panel\Mouse" "MouseSpeed" "0" "String"
             Set-SmartReg "HKCU:\Control Panel\Mouse" "MouseThreshold1" "0" "String"
             Set-SmartReg "HKCU:\Control Panel\Mouse" "MouseThreshold2" "0" "String"
@@ -478,6 +504,56 @@ $Tasks = @(
             Set-SmartReg "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search" "DisableWebSearch" 1 "DWord"
             Set-SmartReg "HKCU:\System\GameConfigStore" "GameDVR_Enabled" 0 "DWord"
             Set-SmartReg "HKLM:\Software\Policies\Microsoft\Windows\GameDVR" "AllowgameDVR" 0 "DWord"
+
+            # --- Bo sung cac tinh chinh theo yeu cau ---
+            # 1. Tat Nagle's Algorithm
+            Set-SmartReg "HKLM:\SOFTWARE\Microsoft\MSMQ\Parameters" "TCPNoDelay" 1 "DWord"
+            $NetInterfaces = Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces" -ErrorAction SilentlyContinue
+            if ($NetInterfaces) {
+                foreach ($Interface in $NetInterfaces) {
+                    Set-SmartReg $Interface.PSPath "TCPNoDelay" 1 "DWord"
+                    Set-SmartReg $Interface.PSPath "TcpAckFrequency" 1 "DWord"
+                    Set-SmartReg $Interface.PSPath "TcpDelAckTicks" 0 "DWord"
+                }
+            }
+            # 2. Tat Fullscreen Optimizations toan cuc
+            Set-SmartReg "HKCU:\System\GameConfigStore" "GameDVR_FSEBehaviorMode" 2 "DWord"
+            Set-SmartReg "HKCU:\System\GameConfigStore" "GameDVR_HonorUserFSEBehaviorMode" 1 "DWord"
+            Set-SmartReg "HKCU:\System\GameConfigStore" "GameDVR_DXGIHonorFSEWindowsCompatible" 1 "DWord"
+            # 3. Triet tieu hoan toan Background Apps (Khao AppPrivacy)
+            Set-SmartReg "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy" "LetAppsRunInBackground" 2 "DWord"
+            # 4. Tat Link State Power Management
+            powercfg.exe -setacvalueindex scheme_current SUB_PCIEXPRESS ASICPM 0 | Out-Null
+            powercfg.exe -setdcvalueindex scheme_current SUB_PCIEXPRESS ASICPM 0 | Out-Null
+            powercfg.exe /setactive scheme_current | Out-Null
+            # 5. Bat Hardware-Accelerated GPU Scheduling (HAGS)
+            Set-SmartReg "HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" "HwSchMode" 2 "DWord"
+            # 6. Cuong che bat Windows Game Mode
+            Set-SmartReg "HKCU:\Software\Microsoft\GameBar" "AutoGameModeEnabled" 1 "DWord"
+            Set-SmartReg "HKCU:\Software\Microsoft\GameBar" "AllowAutoGameMode" 1 "DWord"
+            # 7. Bat Full Visual Effects theo so thich
+            Set-SmartReg "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" "VisualFXSetting" 1 "DWord"
+        }
+    },
+    @{
+        Name = "Thiet lap Hinh nen doc quyen";
+        Action = {
+            Write-Log "Dang tai va thiet lap hinh nen tu GitHub..." "INFO"
+            $url = "https://raw.githubusercontent.com/FyumiSownz/CoreX/main/wallhaven-exy2w8.jpg"
+            $img = Join-Path ([Environment]::GetFolderPath("MyPictures")) "wallhaven-exy2w8.jpg"
+            try {
+                Invoke-WebRequest -Uri $url -OutFile $img -UseBasicParsing -ErrorAction Stop
+                $Def = @"
+                using System.Runtime.InteropServices;
+                public class WP { [DllImport("user32.dll", CharSet=CharSet.Auto)] public static extern int SystemParametersInfo(int u, int param, string lpv, int fu); }
+"@
+                Add-Type -TypeDefinition $Def -ErrorAction SilentlyContinue
+                [WP]::SystemParametersInfo(20, 0, $img, 3) | Out-Null
+                $script:ApplyCount++
+                Write-Log "Da cap nhat hinh nen thanh cong." "APPLY"
+            } catch {
+                Write-Log "Khong the tai hoac thiet lap hinh nen." "SKIP"
+            }
         }
     },
     @{
@@ -492,12 +568,11 @@ $Tasks = @(
                 Write-Log "Tai thanh cong! Dang mo MSI Utility..." "APPLY"
                 Write-Log "=======================================================" "RESULT"
                 Write-Log " CHU Y: Script dang TAM DUNG de ban cau hinh MSI Utility!" "RESULT"
-                Write-Log " 1. Hay tich vao o 'MSI' cho NVIDIA RTX 2060 Super." "RESULT"
+                Write-Log " 1. Hay tich vao o 'MSI' cho CARD DO HOA." "RESULT"
                 Write-Log " 2. Chon muc Interrupt Priority thanh 'High'." "RESULT"
                 Write-Log " 3. Nhan Apply, sau do TAT (X) CUA SO ung dung di." "RESULT"
                 Write-Log "=======================================================" "RESULT"
                 
-                # Su dung -Wait de buoc PowerShell phai dung lai doi den khi app duoc tat
                 Start-Process -FilePath $dest -Verb RunAs -Wait
                 $script:ApplyCount++
                 Write-Log "Da nhan dien viec dong MSI Utility. Tiep tuc..." "INFO"
@@ -517,20 +592,17 @@ For ($i = 0; $i -lt $TotalTasks; $i++) {
     $CurrentTask = $Tasks[$i]
     $global:CurrentPercent = [math]::Round((($i) / $TotalTasks) * 100)
     
-    # Ve thanh tien trinh (ProgressBar) bang Text cuc ngau truoc khi chay tung Module
     Draw-ProgressBar $CurrentTask.Name $global:CurrentPercent
     Reset-Counters
 
-    # Thuc thi doan code - Phan tram % se duoc update kem vao moi dong Log
     & $CurrentTask.Action
     
     Write-Log "Hoan tat module: Ap dung $script:ApplyCount tinh chinh (Bo qua $script:SkipCount muc da co truoc do)." "RESULT"
 }
 
-# Ve thanh tien trinh 100% cuoi cung
 $global:CurrentPercent = 100
 Draw-ProgressBar "HOAN TAT TOAN BO" 100
-Write-Log "TOAN BO MA LENH DA DUOC NAP VA TOI UU HOAN TAT CHO I5-12400F & RTX 2060 SUPER!" "SUCCESS"
+Write-Log "TOAN BO MA LENH DA DUOC NAP VA TOI UU HOAN TAT CHO THIET BI!" "SUCCESS"
 
 # ==============================================================================
 # 5. KET THUC VA KHOI DONG LAI
