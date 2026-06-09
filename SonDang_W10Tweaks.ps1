@@ -1,5 +1,5 @@
 # ==============================================================================
-# Ten File: SonDang_Tweaks.ps1
+# Ten File: SonDang_W10Tweaks.ps1
 # Tac gia: SonDang
 # Chuc nang: Toi uu hoa toan dien, don rac, giam do tre va tat dich vu ngam
 # ==============================================================================
