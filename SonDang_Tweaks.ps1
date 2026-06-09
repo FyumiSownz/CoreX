@@ -265,8 +265,8 @@ $Tasks = @(
             Set-SmartReg "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\kernel" "DistributeTimers" 1 "DWord"
             Set-SmartReg "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\kernel" "DisableTsx" 1 "DWord"
             
+            powercfg.exe /hibernate off
             powercfg.exe -setacvalueindex scheme_current SUB_SLEEP AWAYMODE 0
-            powercfg.exe -setacvalueindex scheme_current SUB_SLEEP ALLOWSTANDBY 0
             powercfg.exe -setacvalueindex scheme_current SUB_SLEEP HYBRIDSLEEP 0
             powercfg.exe -setacvalueindex scheme_current sub_processor PROCTHROTTLEMIN 100
             powercfg.exe /setACvalueindex scheme_current SUB_PROCESSOR SYSCOOLPOL 1
